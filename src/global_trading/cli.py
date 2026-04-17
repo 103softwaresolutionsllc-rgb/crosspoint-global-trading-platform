@@ -85,26 +85,31 @@ def cmd_run_once(args: argparse.Namespace) -> int:
         venue = Venue.INTERACTIVE_BROKERS
         account_id = "IBKR-PAPER"
 
-    wf = TradingWorkflow(
-        market_data=market,
-        signal=signal,
-        portfolio=portfolio,
-        risk=risk,
-        execution=execution,
-        connector=connector,
-        venue=venue,
-        account_id=account_id,
-        audit=audit,
-        ledger=ledger,
-        metrics=metrics,
-    )
-    result = wf.run_once()
-    log.info("workflow_finished", payload=_serialize_workflow_result(result))
-    if result.order:
-        print(json.dumps(to_jsonable(result.order), indent=2))
-    else:
-        print(json.dumps({"skipped": result.skipped_reason}, indent=2))
-    return 0
+    try:
+        wf = TradingWorkflow(
+            market_data=market,
+            signal=signal,
+            portfolio=portfolio,
+            risk=risk,
+            execution=execution,
+            connector=connector,
+            venue=venue,
+            account_id=account_id,
+            audit=audit,
+            ledger=ledger,
+            metrics=metrics,
+        )
+        result = wf.run_once()
+        log.info("workflow_finished", payload=_serialize_workflow_result(result))
+        if result.order:
+            print(json.dumps(to_jsonable(result.order), indent=2))
+        else:
+            print(json.dumps({"skipped": result.skipped_reason}, indent=2))
+        return 0
+    finally:
+        disconnect = getattr(connector, "disconnect", None)
+        if callable(disconnect):
+            disconnect()
 
 
 def cmd_reconcile(args: argparse.Namespace) -> int:
@@ -128,11 +133,14 @@ def cmd_reconcile(args: argparse.Namespace) -> int:
             use_stub=s.ibkr_use_stub,
             metrics=metrics,
         )
-        remote = ib.get_positions()
-        local: list = []
-        rep = reconcile_positions(
-            account_id="IBKR-PAPER", venue=Venue.INTERACTIVE_BROKERS, local=local, remote=remote
-        )
+        try:
+            remote = ib.get_positions()
+            local: list = []
+            rep = reconcile_positions(
+                account_id="IBKR-PAPER", venue=Venue.INTERACTIVE_BROKERS, local=local, remote=remote
+            )
+        finally:
+            ib.disconnect()
     log.info("reconciliation", ok=rep.ok, mismatches=len(rep.mismatches))
     print(json.dumps(to_jsonable(rep), indent=2))
     return 0 if rep.ok else 1

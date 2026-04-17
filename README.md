@@ -14,6 +14,15 @@ pip install -e ".[dev]"
 
 Copy `config/compliance.example.env` to `.env` and set variables. Use paper trading first.
 
+Optional extras `[ibkr]` and `[crypto]` need pre-built wheels for native dependencies; use **Python 3.11–3.13** if installs fail on newer interpreters.
+
+## One-shot verification
+
+Runs tests, CLI smoke commands, then optional IBKR/CCXT installs (skipped automatically on Python 3.15+ where wheels are often missing).
+
+- Windows: `pwsh scripts/verify.ps1`, or Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts/verify.ps1`
+- macOS/Linux: `bash scripts/verify.sh`
+
 ## CLI
 
 ```bash

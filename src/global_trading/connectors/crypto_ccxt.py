@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, datetime
-
-import ccxt  # type: ignore[import-untyped]
+from typing import Any
 
 from global_trading.core.domain import (
     AssetClass,
@@ -17,6 +16,16 @@ from global_trading.core.domain import (
     Venue,
 )
 from global_trading.observability.metrics import Metrics
+
+
+def _import_ccxt() -> Any:
+    try:
+        import ccxt  # type: ignore[import-untyped]
+    except ImportError as e:
+        raise RuntimeError(
+            'ccxt is not installed; run: pip install "global-trading-platform[crypto]"'
+        ) from e
+    return ccxt
 
 
 class CCXTCryptoConnector:
@@ -36,6 +45,7 @@ class CCXTCryptoConnector:
         self.account_id = account_id
         self._exchange_id = exchange_id
         self._metrics = metrics
+        ccxt = _import_ccxt()
         klass = getattr(ccxt, exchange_id)
         self._ex = klass(
             {
