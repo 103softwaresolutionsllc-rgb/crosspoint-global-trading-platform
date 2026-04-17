@@ -3,15 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from global_trading.core.domain import (
-    InstrumentId,
-    Money,
-    Order,
-    OrderSide,
-    OrderStatus,
-    Position,
-    Venue,
-)
+from global_trading.core.domain import InstrumentId, Money, Order, OrderSide, OrderStatus, Position
 from global_trading.observability.metrics import Metrics
 
 
