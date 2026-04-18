@@ -5,11 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "global-trading-platform"
 version = "0.1.0"
-description = "Multi-agent trading platform with pluggable broker and crypto connectors"
+description = "Crosspoint: multi-agent trading core with pluggable broker and crypto connectors"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "structlog>=24.1",
+  "rich>=13.7",
 ]
 
 [project.optional-dependencies]
@@ -23,6 +24,7 @@ dev = [
 
 [project.scripts]
 gtp = "global_trading.cli:main"
+crosspoint = "global_trading.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,4 +1,4 @@
-# Global trading platform
+# Crosspoint
 
 Multi-agent trading core with pluggable connectors (paper/live broker, crypto CEX). See `RUNBOOK.md` for operations and `config/compliance.example.env` for compliance-related settings.
 
@@ -26,6 +26,13 @@ Runs tests, CLI smoke commands, then optional IBKR/CCXT installs (skipped automa
 ## CLI
 
 ```bash
+# New primary command (recommended)
+crosspoint run-once
+crosspoint reconcile
+crosspoint crypto-once
+crosspoint metrics
+
+# Backwards-compatible alias
 gtp run-once
 gtp reconcile
 gtp crypto-once

@@ -14,7 +14,7 @@ Keep `GTP_PAPER_FIRST=true` and use broker paper or `GTP_IBKR_USE_STUB=1` until 
 
 ## Reconciliation failures
 
-1. Run `gtp reconcile` (or `--ibkr` when using that adapter).
+1. Run `crosspoint reconcile` (or `--ibkr` when using that adapter). (`gtp` is a supported alias.)
 2. If `ok` is false, compare `local_qty` vs `remote_qty` in the report.
 3. Pull broker/exchange blotter and match `client_order_id` in the audit DB (`audit_events` table in `var/audit.sqlite3`).
 4. Halt trading if unexplained drift persists after two consecutive checks.
@@ -23,7 +23,7 @@ Keep `GTP_PAPER_FIRST=true` and use broker paper or `GTP_IBKR_USE_STUB=1` until 
 
 1. Enable kill switch.
 2. Capture last 200 audit rows (SQLite query or app helper).
-3. Export metrics snapshot (`gtp metrics`).
+3. Export metrics snapshot (`crosspoint metrics` / `gtp metrics`).
 4. Disconnect optional IB sessions (`InteractiveBrokersConnector.disconnect` in long-running processes).
 
 ## Logs

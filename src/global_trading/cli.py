@@ -5,6 +5,10 @@ import json
 import sys
 from dataclasses import asdict
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
 from global_trading.agents.execution import ExecutionAgent
 from global_trading.agents.market_data import MarketDataAgent
 from global_trading.agents.portfolio import PortfolioAgent
@@ -29,6 +33,31 @@ from global_trading.observability.logging import configure_logging, get_logger
 from global_trading.observability.metrics import Metrics
 from global_trading.orchestrator.workflow import TradingWorkflow, WorkflowResult
 from global_trading.settings import load_settings
+
+
+_CROSSPOINT_CYAN = "#25E7FF"
+_CROSSPOINT_DARK = "#0B1020"
+
+
+def _print_banner(console: Console, prog: str) -> None:
+    title = Text("CROSSPOINT", style=f"bold {_CROSSPOINT_CYAN}")
+    subtitle = Text("multi-agent trading platform", style="bold #A9B4C4")
+    body = Text()
+    body.append_text(title)
+    body.append("\n")
+    body.append_text(subtitle)
+    body.append("\n\n")
+    body.append("Command: ", style="bold #A9B4C4")
+    body.append(prog, style=f"bold {_CROSSPOINT_CYAN}")
+
+    console.print(
+        Panel(
+            body,
+            border_style=_CROSSPOINT_CYAN,
+            style=f"on {_CROSSPOINT_DARK}",
+            padding=(1, 2),
+        )
+    )
 
 
 def _build_common() -> tuple[AuditLog, Metrics]:
@@ -229,7 +258,10 @@ def cmd_crypto_once(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="gtp", description="Global trading platform CLI")
+    p = argparse.ArgumentParser(
+        prog="crosspoint",
+        description="Crosspoint CLI (multi-agent trading platform). 'gtp' is supported as an alias.",
+    )
     sub = p.add_subparsers(dest="cmd", required=True)
 
     r = sub.add_parser("run-once", help="Run one demo workflow tick (default: fake connector)")
@@ -259,6 +291,16 @@ def main(argv: list[str] | None = None) -> None:
     argv = argv if argv is not None else sys.argv[1:]
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # A small, logo-matching terminal UI flourish. Opt-out via env or flag if needed later.
+    console = Console()
+    invoked_as = (sys.argv[0] or "").split("\\")[-1].split("/")[-1]
+    prog = invoked_as or "crosspoint"
+    try:
+        _print_banner(console, prog=prog)
+    except Exception:
+        # Never block trading actions on UI concerns.
+        pass
     raise SystemExit(args.func(args))
 
 
