@@ -1,14 +1,14 @@
-# Fincept Terminal
+# Crosspoint Global Trading Platform
 
 <div align="center">
 
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-C06524)](https://github.com/Fincept-Corporation/FinceptTerminal/blob/main/LICENSE)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-C06524)](https://github.com/103softwaresolutionsllc-rgb/global-trading-platform/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Qt6](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)](https://www.qt.io/)
 
-### **Your Thinking is the Only Limit. The Data Isn't.**
+### **Advanced Multi-Agent Trading Platform**
 
-State-of-the-art financial intelligence platform with CFA-level analytics, AI automation, and unlimited data connectivity.
+Enterprise-grade trading platform with AI-powered analytics, real-time execution, and comprehensive market intelligence.
 
 [📥 Download](https://github.com/Fincept-Corporation/FinceptTerminal/releases) · [📚 Docs](https://github.com/Fincept-Corporation/FinceptTerminal/tree/main/docs) · [💬 Discussions](https://github.com/Fincept-Corporation/FinceptTerminal/discussions) · [💬 Discord](https://discord.gg/ae87a8ygbN) · [🤝 Partner](https://github.com/Fincept-Corporation/FinceptTerminal/blob/main/docs/COMMERCIAL_LICENSE.md)
 
@@ -18,7 +18,15 @@ State-of-the-art financial intelligence platform with CFA-level analytics, AI au
 
 ## About
 
-**Fincept Terminal v4** is a comprehensive financial intelligence platform combining Python analytics, Qt6 UI, and embedded AI agents. It delivers Bloomberg-terminal-class performance with unlimited data connectivity and CFA-level analytics.
+**Crosspoint Global Trading Platform** is a sophisticated multi-agent trading system enhanced with FinceptTerminal's advanced analytics engine. Originally developed as a multi-agent trading platform, it now includes CFA-level analytics, AI investment agents, real-time WebSocket trading, and a modern Qt6 interface.
+
+**🤝 Enhanced with FinceptTerminal Technology**
+- Integrated FinceptTerminal v4 analytics engine
+- CFA-level financial modeling and portfolio optimization
+- AI agents from famous investors (Buffett, Graham, Lynch, Dunlap)
+- Real-time trading with 16+ broker integrations
+- Advanced quantitative analysis suite (QuantLib)
+- Modern Qt6 dashboard with visual workflow editor
 
 ---
 
@@ -26,14 +34,15 @@ State-of-the-art financial intelligence platform with CFA-level analytics, AI au
 
 | **Feature** | **Description** |
 |-------------|-----------------|
-| 📊 **CFA-Level Analytics** | DCF models, portfolio optimization, risk metrics (VaR, Sharpe), derivatives pricing via embedded Python |
-| 🤖 **AI Agents** | 37 agents across Trader/Investor (Buffett, Graham, Lynch, Munger, Klarman, Marks…), Economic, and Geopolitics frameworks; local LLM support; multi-provider (OpenAI, Anthropic, Gemini, Groq, DeepSeek, MiniMax, OpenRouter, Ollama) |
-| 🌐 **100+ Data Connectors** | DBnomics, Polygon, Kraken, Yahoo Finance, FRED, IMF, World Bank, AkShare, government APIs, plus optional alternative-data overlays such as Adanos market sentiment for equity research |
-| 📈 **Real-Time Trading** | Crypto (Kraken/HyperLiquid WebSocket), equity, algo trading, paper trading engine, 16 broker integrations (Zerodha, Angel One, Upstox, Fyers, Dhan, Groww, Kotak, IIFL, 5paisa, AliceBlue, Shoonya, Motilal, IBKR, Alpaca, Tradier, Saxo) |
-| 🔬 **QuantLib Suite** | 18 quantitative analysis modules — pricing, risk, stochastic, volatility, fixed income |
-| 🚢 **Global Intelligence** | Maritime tracking, geopolitical analysis, relationship mapping, satellite data |
-| 🎨 **Visual Workflows** | Node editor for automation pipelines, MCP tool integration |
-| 🧠 **AI Quant Lab** | ML models, factor discovery, HFT, reinforcement learning trading |
+| 🤖 **Multi-Agent Trading** | Original autonomous trading agents with enhanced AI investor strategies |
+| 📊 **CFA-Level Analytics** | DCF models, portfolio optimization, risk metrics (VaR, Sharpe), derivatives pricing |
+| 🤖 **AI Investment Agents** | Buffett, Graham, Lynch, Dunlap agents with value/growth strategies |
+| 🌐 **100+ Data Connectors** | Yahoo Finance, FRED, Kraken, Polygon, IMF, World Bank, and more |
+| 📈 **Real-Time Trading** | WebSocket streaming,16 broker integrations, algorithmic execution |
+| 🔬 **QuantLib Suite** | 18 quantitative modules - pricing, risk, volatility, stochastic models |
+| 🎨 **Modern Qt6 UI** | Professional dashboard with real-time charts and workflow editor |
+| 🚢 **Visual Workflows** | Node-based automation pipelines for trading strategies |
+| 🧠 **AI Quant Lab** | Machine learning models, factor discovery, HFT capabilities |
 
 ---
 
@@ -42,9 +51,9 @@ State-of-the-art financial intelligence platform with CFA-level analytics, AI au
 ### Quick Start (Python-based)
 
 ```bash
-# Clone and setup
-git clone https://github.com/Fincept-Corporation/FinceptTerminal.git
-cd FinceptTerminal
+# Clone repository
+git clone https://github.com/103softwaresolutionsllc-rgb/global-trading-platform.git
+cd global-trading-platform
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 # source .venv/bin/activate  # Linux/macOS
@@ -77,10 +86,11 @@ fincept reconcile
 fincept crypto-once
 fincept metrics
 
-# AI agents
-fincept agent --buffett
-fincept agent --graham
-fincept agent --lynch
+# Enhanced AI agents
+fincept agent --buffett --ticker AAPL
+fincept agent --graham --ticker MSFT
+fincept agent --lynch --ticker NVDA
+fincept agent --dunlap --ticker GOOGL
 
 # Analytics
 fincept dcf --ticker AAPL
@@ -99,15 +109,14 @@ fincept data --source kraken --pair BTC/USD
 
 ```
 src/
-├── fincept_terminal/           # Main application
+├── fincept_terminal/           # Enhanced FinceptTerminal engine
 │   ├── analytics/             # CFA-level analytics
 │   │   ├── dcf.py            # Discounted Cash Flow models
 │   │   ├── portfolio.py      # Portfolio optimization
 │   │   └── risk.py           # Risk metrics (VaR, Sharpe)
 │   ├── agents/               # AI trading agents
-│   │   ├── value_investors/  # Buffett, Graham, Lynch
-│   │   ├── quant_agents/     # Quantitative strategies
-│   │   └── macro_agents/     # Economic/geopolitical
+│   │   ├── value_investors/  # Buffett, Graham, Lynch, Dunlap
+│   │   └── base.py          # Base agent framework
 │   ├── connectors/           # Data connectors
 │   │   ├── yahoo_finance.py
 │   │   ├── fred.py
@@ -125,20 +134,48 @@ src/
 │       ├── dashboard.py
 │       ├── node_editor.py
 │       └── charts.py
-```
 
 ---
 
 ## Contributing
 
-We're building the future of financial analysis — together.
+We're building the future of automated trading — together.
 
-**Contribute:** New data connectors, AI agents, analytics modules, UI components, documentation
+**Contribute:** New trading strategies, data connectors, analytics modules, UI improvements
 
-- [Contributing Guide](docs/CONTRIBUTING.md)
-- [Python Contributor Guide](docs/PYTHON_CONTRIBUTOR_GUIDE.md)
-- [Report Bug](https://github.com/Fincept-Corporation/FinceptTerminal/issues)
+- [Report Bug](https://github.com/103softwaresolutionsllc-rgb/global-trading-platform/issues)
+- [Request Feature](https://github.com/103softwaresolutionsllc-rgb/global-trading-platform/discussions)
 - [Request Feature](https://github.com/Fincept-Corporation/FinceptTerminal/discussions)
+
+---
+
+## Technology Stack
+
+### Core Technologies
+- **Python 3.11+**: Core language and analytics
+- **Qt6**: Modern cross-platform GUI framework
+- **AsyncIO**: Real-time data processing and WebSocket handling
+- **Pandas/NumPy**: Financial data analysis and modeling
+- **SciPy**: Statistical analysis and optimization
+
+### Financial Libraries
+- **yfinance**: Yahoo Finance data integration
+- **websockets**: Real-time market data streaming
+- **QuantLib**: Advanced quantitative finance models
+- **scikit-learn**: Machine learning for trading strategies
+
+---
+
+## Acknowledgments
+
+**Enhanced with FinceptTerminal Technology**
+This platform incorporates advanced analytics and AI agent frameworks inspired by FinceptTerminal's innovative approach to financial intelligence. The integration brings institutional-grade capabilities to our multi-agent trading system.
+
+**Original Crosspoint Development**
+- Multi-agent trading architecture
+- Real-time risk management
+- Broker integration framework
+- Audit and reconciliation systems
 
 ---
 
@@ -159,13 +196,12 @@ We're building the future of financial analysis — together.
 ### Trademarks
 "Fincept Terminal" and "Fincept" are trademarks of Fincept Corporation.
 
-© 2025-2026 Fincept Corporation. All rights reserved.
-
 ---
 
 <div align="center">
 
-### **Your Thinking is the Only Limit. The Data Isn't.**
+### **Enterprise Trading Platform**
+### **Enhanced with Advanced Analytics**
 
 ⭐ **Star** · 🔄 **Share** · 🤝 **Contribute**
 
