@@ -358,20 +358,47 @@ class NodeEditorWidget(QWidget):
         self.status_label.setText("Workflow cleared")
     
     def run_workflow(self):
-        """Run the current workflow"""
+        """Run the current workflow via WorkflowExecutor when possible."""
         if not self.scene.nodes:
             self.status_label.setText("No workflow to run")
             return
-        
+
         self.status_label.setText("Running workflow...")
-        
-        # Simulate workflow execution
-        node_count = len(self.scene.nodes)
-        connection_count = len(self.scene.connections)
-        
-        self.status_label.setText(
-            f"Workflow executed: {node_count} nodes, {connection_count} connections"
-        )
+
+        try:
+            from fincept_terminal.workflows.executor import WorkflowExecutor
+            from fincept_terminal.workflows.schema import WorkflowConnection, WorkflowDefinition, WorkflowNode
+
+            type_map = {
+                "data": "data/yahoo",
+                "analytics": "analytics/dcf",
+                "trading": "trading/risk_check",
+                "agent": "agent/consensus",
+                "output": "output/alert",
+            }
+            nodes = []
+            for nid, item in self.scene.nodes.items():
+                node_type = type_map.get(item.node_type, item.node_type)
+                nodes.append(WorkflowNode(id=nid, type=node_type, title=item.title))
+
+            connections = [
+                WorkflowConnection(from_node=c.start_node.node_id, to_node=c.end_node.node_id)
+                for c in self.scene.connections
+            ]
+            definition = WorkflowDefinition(name="ui-workflow", nodes=nodes, connections=connections)
+
+            import asyncio
+            result = asyncio.get_event_loop().run_until_complete(WorkflowExecutor().run(definition))
+            status = "OK" if result.success else "FAILED"
+            self.status_label.setText(
+                f"Workflow {status}: {len(result.node_outputs)} nodes executed"
+            )
+        except Exception as e:
+            node_count = len(self.scene.nodes)
+            connection_count = len(self.scene.connections)
+            self.status_label.setText(
+                f"Fallback run: {node_count} nodes, {connection_count} connections ({e})"
+            )
     
     def setup_sample_workflow(self):
         """Create a sample workflow for demonstration"""

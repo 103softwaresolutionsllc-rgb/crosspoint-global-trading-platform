@@ -3,6 +3,7 @@ Main Window for Fincept Terminal
 Qt6-based main application window with modern financial interface
 """
 
+import os
 import sys
 import asyncio
 from typing import Dict, Any, Optional
@@ -15,7 +16,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QTimer, pyqtSignal, QThread, Qt
 from PyQt6.QtGui import QIcon, QAction, QFont, QPalette, QColor
 
-from .dashboard import DashboardWidget
+from .phase2_dashboard import Phase2DashboardWidget
 from .charts import ChartWidget
 from .node_editor import NodeEditorWidget
 from ..analytics.dcf import DCFModel
@@ -34,12 +35,15 @@ class FinceptMainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Fincept Terminal v4.0.2")
+        self.setWindowTitle("Crosspoint Global Trading Platform")
         self.setGeometry(100, 100, 1400, 900)
         
         # Initialize components
+        from ..agents.liquidity_gate import LiquidityGateAgent
+
         self.websocket_manager = WebSocketManager()
-        self.data_feed = RealTimeDataFeed(self.websocket_manager)
+        self.liquidity_gate = LiquidityGateAgent()
+        self.data_feed = RealTimeDataFeed(self.websocket_manager, liquidity_gate=self.liquidity_gate)
         
         # Setup UI
         self.setup_ui()
@@ -53,10 +57,10 @@ class FinceptMainWindow(QMainWindow):
         # Initialize data connections
         self.initialize_connections()
         
-        # Start update timer
+        # Lightweight left-panel tape refresh (full agent refresh is on the dashboard widget)
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_market_data)
-        self.update_timer.start(1000)  # Update every second
+        self.update_timer.start(20_000)
     
     def setup_ui(self):
         """Setup the main UI layout"""
@@ -157,8 +161,9 @@ class FinceptMainWindow(QMainWindow):
         """Create center panel with main tabs"""
         self.tab_widget = QTabWidget()
         
-        # Dashboard tab
-        self.dashboard = DashboardWidget(self.data_feed)
+        # Dashboard tab — live consensus layout with chart drawers
+        self.dashboard = Phase2DashboardWidget(data_feed=self.data_feed)
+        self.dashboard.state_refreshed.connect(self._on_dashboard_refreshed)
         self.tab_widget.addTab(self.dashboard, "Dashboard")
         
         # Analytics tab
@@ -660,15 +665,56 @@ Key Metrics:
         self.chart_widget.set_symbol(symbol)
     
     def update_market_data(self):
-        """Update market data"""
-        # This would update real-time data
-        pass
-    
+        """Refresh left-panel quotes from the latest dashboard tape."""
+        state = self.dashboard.state
+        if state is None:
+            return
+        self._sync_market_watch(state)
+
     def refresh_data(self):
-        """Refresh all data"""
-        self.status_bar.showMessage("Refreshing data...")
-        # Implementation would refresh all data sources
-        self.status_bar.showMessage("Data refreshed", 3000)
+        """Refresh live dashboard state (agents, positions, execution)."""
+        self.status_bar.showMessage("Refreshing live dashboard…")
+        self.dashboard.start_refresh()
+
+    def _on_dashboard_refreshed(self, state) -> None:
+        """Sync side panels when the dashboard finishes a live reload."""
+        self._sync_left_panel(state)
+        self.status_bar.showMessage(
+            f"Refreshed · {state.broker_mode} · {state.timestamp} · {state.signal_ticker}",
+            5000,
+        )
+
+    def _sync_left_panel(self, state) -> None:
+        self._sync_market_watch(state)
+        self._sync_positions_table(state)
+        portfolio_value = float(os.environ.get("GTP_PORTFOLIO_VALUE", "100000"))
+        total_pnl = sum(p.pnl for p in state.positions)
+        sign = "+" if total_pnl >= 0 else ""
+        self.portfolio_value_label.setText(f"Portfolio Value: ${portfolio_value:,.2f}")
+        self.daily_pnl_label.setText(f"Unrealized P&L: {sign}${abs(total_pnl):,.2f}")
+        self.total_pnl_label.setText(f"Broker: {state.broker_mode.upper()} · Signal: {state.signal_ticker}")
+
+    def _sync_market_watch(self, state) -> None:
+        items = state.ticker_tape[:20]
+        self.market_table.setRowCount(len(items))
+        for row, item in enumerate(items):
+            sign = "+" if item.change_pct >= 0 else ""
+            self.market_table.setItem(row, 0, QTableWidgetItem(item.symbol))
+            self.market_table.setItem(row, 1, QTableWidgetItem(f"${item.price:,.2f}"))
+            self.market_table.setItem(row, 2, QTableWidgetItem(f"{sign}{item.change_pct:.2f}%"))
+            self.market_table.setItem(row, 3, QTableWidgetItem("—"))
+            self.market_table.setItem(row, 4, QTableWidgetItem("—"))
+
+    def _sync_positions_table(self, state) -> None:
+        self.positions_table.setRowCount(len(state.positions))
+        for row, pos in enumerate(state.positions):
+            sign = "+" if pos.pnl >= 0 else ""
+            self.positions_table.setItem(row, 0, QTableWidgetItem(pos.ticker))
+            self.positions_table.setItem(row, 1, QTableWidgetItem(str(pos.quantity)))
+            self.positions_table.setItem(row, 2, QTableWidgetItem("—"))
+            self.positions_table.setItem(row, 3, QTableWidgetItem("—"))
+            self.positions_table.setItem(row, 4, QTableWidgetItem(f"{sign}${abs(pos.pnl):,.0f}"))
+            self.positions_table.setItem(row, 5, QTableWidgetItem(f"{sign}{pos.pnl_pct:.1f}%"))
     
     def connect_exchanges(self):
         """Connect to exchanges"""

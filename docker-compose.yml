@@ -1,0 +1,39 @@
+# Crosspoint development/staging environment
+# IBKR TWS/Gateway must run on the host — connect via host.docker.internal
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  crosspoint-worker:
+    build: .
+    command: celery -A fincept_terminal.scheduler.tasks worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - GTP_IBKR_HOST=host.docker.internal
+    volumes:
+      - ./var:/app/var
+    depends_on:
+      - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  crosspoint-scheduler:
+    build: .
+    command: celery -A fincept_terminal.scheduler.tasks beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - crosspoint-worker
+
+volumes:
+  redis_data:

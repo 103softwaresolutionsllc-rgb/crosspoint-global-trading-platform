@@ -14,6 +14,7 @@ from typing import Dict, Any
 import numpy as np
 
 from ..base import BaseAgent, AgentResult, AgentType, Recommendation
+from ..macro_context import apply_macro_to_result, resolve_macro
 
 
 class GrahamAgent(BaseAgent):
@@ -54,6 +55,7 @@ class GrahamAgent(BaseAgent):
     async def analyze(self, ticker: str, investor_type: str = "defensive", **kwargs) -> AgentResult:
         """Analyze stock using Benjamin Graham's principles"""
         try:
+            macro = await resolve_macro(kwargs)
             # Get financial data
             financial_data = await self._get_financial_data(ticker)
             
@@ -107,7 +109,7 @@ class GrahamAgent(BaseAgent):
             risk_factors = await self._identify_graham_risks(financial_data, graham_metrics)
             catalysts = await self._identify_graham_catalysts(financial_data, graham_metrics)
             
-            return AgentResult(
+            result = AgentResult(
                 agent_name=self.name,
                 ticker=ticker.upper(),
                 recommendation=recommendation,
@@ -133,6 +135,7 @@ class GrahamAgent(BaseAgent):
                     'margin_of_safety_required': '30-50%',
                 }
             )
+            return apply_macro_to_result(result, macro, "graham")
             
         except Exception as e:
             return AgentResult(

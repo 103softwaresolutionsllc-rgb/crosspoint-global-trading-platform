@@ -41,3 +41,17 @@ class StaticIntentSignal:
 
     def generate_demo_intent(self) -> TradeIntent:
         return self._intent
+
+
+def consensus_signal_provider(ticker: str = "AAPL"):
+    """
+    Factory for live consensus-backed signals.
+
+    Usage in TradingWorkflow::
+
+        from fincept_terminal.trading.bridge import ConsensusSignalBridge, ConsensusSignalProvider
+        signal = ConsensusSignalProvider(ConsensusSignalBridge(), ticker="AAPL")
+    """
+    from fincept_terminal.trading.bridge import ConsensusSignalBridge, ConsensusSignalProvider
+
+    return ConsensusSignalProvider(ConsensusSignalBridge(), ticker=ticker)

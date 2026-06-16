@@ -183,7 +183,62 @@ class BaseAgent(abc.ABC):
             
         except Exception as e:
             raise ValueError(f"Failed to calculate technical indicators: {str(e)}")
-    
+
+    async def _structural_regime_check(self, ticker: str, price_data: pd.DataFrame) -> dict[str, float]:
+        """
+        MIT-style econometric guard: detect statistical breaks in rolling variance.
+        Returns dampening factor (1.0 = no change, lower = reduce agent confidence).
+        """
+        closes = price_data["Close"].dropna()
+        if len(closes) < 60:
+            return {"dampening": 1.0, "z_score": 0.0, "vol_ratio": 1.0}
+
+        returns = closes.pct_change().dropna()
+        short_vol = float(returns.tail(20).std())
+        long_vol = float(returns.tail(120).std()) if len(returns) >= 120 else float(returns.std())
+        vol_ratio = short_vol / long_vol if long_vol > 0 else 1.0
+
+        recent = float(returns.tail(20).mean())
+        baseline = float(returns.tail(120).mean()) if len(returns) >= 120 else float(returns.mean())
+        baseline_std = float(returns.tail(120).std()) if len(returns) >= 120 else float(returns.std())
+        z_score = (recent - baseline) / baseline_std if baseline_std > 0 else 0.0
+
+        dampening = 1.0
+        if vol_ratio > 2.0:
+            dampening *= 0.75
+        if abs(z_score) > 2.5:
+            dampening *= 0.80
+        if vol_ratio > 3.0 or abs(z_score) > 3.5:
+            dampening *= 0.70
+
+        return {
+            "dampening": max(0.4, dampening),
+            "z_score": z_score,
+            "vol_ratio": vol_ratio,
+            "short_vol": short_vol,
+            "long_vol": long_vol,
+        }
+
+    def _apply_structural_dampening(
+        self, result: AgentResult, regime: dict[str, float]
+    ) -> AgentResult:
+        """Apply structural break dampening to confidence and annotate risks."""
+        from dataclasses import replace
+
+        factor = regime.get("dampening", 1.0)
+        if factor >= 0.99:
+            return result
+
+        new_conf = max(0.0, min(1.0, result.confidence * factor))
+        note = (
+            f"Structural regime check: vol_ratio={regime.get('vol_ratio', 0):.2f}, "
+            f"z={regime.get('z_score', 0):.2f} — confidence dampened to {new_conf:.2f}"
+        )
+        risks = list(result.risk_factors) + [note]
+        add = dict(result.additional_data or {})
+        add["structural_regime"] = regime
+        return replace(result, confidence=new_conf, risk_factors=risks, additional_data=add)
+
     async def _get_llm_analysis(self, prompt: str) -> str:
         """Get analysis from language model"""
         try:

@@ -418,3 +418,61 @@ class PortfolioOptimizer:
             
         except Exception as e:
             raise ValueError(f"Black-Litterman optimization failed: {str(e)}")
+
+
+async def knn_position_scale(
+    ticker: str,
+    *,
+    k: int = 5,
+    lookback_days: int = 504,
+    min_scale: float = 0.25,
+    max_scale: float = 1.0,
+) -> float:
+    """
+    k-Nearest Neighbors outlier check on return/vol feature vectors.
+
+    Compares the current 20-day (return, volatility) point to historical windows.
+    Extreme Mahalanobis-like distance → scale down order volume before execution.
+    """
+    try:
+        bench = yf.download("SPY", period=f"{lookback_days}d", interval="1d", progress=False)["Close"]
+        asset = yf.download(ticker, period=f"{lookback_days}d", interval="1d", progress=False)["Close"]
+        if hasattr(bench, "columns"):
+            bench = bench.iloc[:, 0]
+        if hasattr(asset, "columns"):
+            asset = asset.iloc[:, 0]
+        bench = bench.dropna()
+        asset = asset.dropna()
+        if len(asset) < 120 or len(bench) < 120:
+            return max_scale
+
+        def _features(close: pd.Series, end: int) -> np.ndarray:
+            window = close.iloc[end - 20 : end]
+            rets = window.pct_change().dropna()
+            if len(rets) < 10:
+                return np.array([0.0, 0.0])
+            return np.array([float(rets.mean() * 252), float(rets.std() * np.sqrt(252))])
+
+        history: list[np.ndarray] = []
+        for end in range(60, len(bench) - 1, 5):
+            history.append(_features(bench, end))
+
+        current = _features(asset, len(asset))
+        hist_mat = np.array(history)
+        dists = np.linalg.norm(hist_mat - current, axis=1)
+        k = min(k, len(dists))
+        knn_mean = float(np.mean(np.partition(dists, k - 1)[:k]))
+        baseline = float(np.median(dists))
+        ratio = knn_mean / baseline if baseline > 0 else 1.0
+
+        if ratio > 2.5:
+            scale = min_scale
+        elif ratio > 1.8:
+            scale = 0.5
+        elif ratio > 1.3:
+            scale = 0.75
+        else:
+            scale = max_scale
+        return float(max(min_scale, min(max_scale, scale)))
+    except Exception:
+        return max_scale

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import asdict
 
@@ -31,7 +32,8 @@ from global_trading.core.risk import RiskConfig, RiskEngine
 from global_trading.core.serde import to_jsonable
 from global_trading.observability.logging import configure_logging, get_logger
 from global_trading.observability.metrics import Metrics
-from global_trading.orchestrator.workflow import TradingWorkflow, WorkflowResult
+from global_trading.executor import run_workflow_once
+from global_trading.orchestrator.workflow import WorkflowResult
 from global_trading.settings import load_settings
 
 
@@ -77,68 +79,29 @@ def _serialize_workflow_result(result: WorkflowResult) -> dict:
     }
 
 
-def cmd_run_once(args: argparse.Namespace) -> int:
-    s = load_settings()
-    audit, metrics = _build_common()
-    log = get_logger("gtp.run_once")
-    ledger = PositionLedger(account_id="paper-1")
-    risk_engine = RiskEngine(
-        RiskConfig(
-            kill_switch=s.kill_switch,
-            max_daily_loss_base=s.max_daily_loss_base,
-            base_currency=s.base_currency,
-            max_notional_per_order=1_000_000.0,
-        )
-    )
-    market = MarketDataAgent(marks={"DEMO": 50.0})
-    signal = SignalAgent()
-    portfolio = PortfolioAgent()
-    risk = RiskAgent(risk_engine)
-    execution = ExecutionAgent()
-
-    if not args.ibkr:
-        connector: FakeConnector | InteractiveBrokersConnector = FakeConnector(
-            account_id="paper-1", metrics=metrics
-        )
-        venue = Venue.BROKER_GENERIC
-        account_id = "paper-1"
-    else:
-        connector = InteractiveBrokersConnector(
-            account_id="IBKR-PAPER",
-            host=s.ibkr_host,
-            port=s.ibkr_port,
-            client_id=s.ibkr_client_id,
-            use_stub=s.ibkr_use_stub,
-            metrics=metrics,
-        )
-        venue = Venue.INTERACTIVE_BROKERS
-        account_id = "IBKR-PAPER"
-
+def _mark_price(ticker: str) -> float:
     try:
-        wf = TradingWorkflow(
-            market_data=market,
-            signal=signal,
-            portfolio=portfolio,
-            risk=risk,
-            execution=execution,
-            connector=connector,
-            venue=venue,
-            account_id=account_id,
-            audit=audit,
-            ledger=ledger,
-            metrics=metrics,
-        )
-        result = wf.run_once()
-        log.info("workflow_finished", payload=_serialize_workflow_result(result))
-        if result.order:
-            print(json.dumps(to_jsonable(result.order), indent=2))
-        else:
-            print(json.dumps({"skipped": result.skipped_reason}, indent=2))
-        return 0
-    finally:
-        disconnect = getattr(connector, "disconnect", None)
-        if callable(disconnect):
-            disconnect()
+        import yfinance as yf
+
+        hist = yf.Ticker(ticker).history(period="5d")["Close"].dropna()
+        return float(hist.iloc[-1]) if not hist.empty else 100.0
+    except Exception:
+        return 100.0
+
+
+def cmd_run_once(args: argparse.Namespace) -> int:
+    ticker = (args.ticker or os.environ.get("GTP_SIGNAL_TICKER", "AAPL")).upper()
+    payload = run_workflow_once(
+        ticker=ticker,
+        use_ibkr=args.ibkr,
+        demo=args.demo,
+        asset_class=getattr(args, "asset_class", None),
+    )
+    if payload.get("order"):
+        print(json.dumps(payload["order"], indent=2))
+    else:
+        print(json.dumps({"skipped": payload.get("skipped_reason")}, indent=2))
+    return 0
 
 
 def cmd_reconcile(args: argparse.Namespace) -> int:
@@ -264,12 +227,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    r = sub.add_parser("run-once", help="Run one demo workflow tick (default: fake connector)")
+    r = sub.add_parser("run-once", help="Run one workflow tick through risk and execution")
     r.add_argument(
         "--ibkr",
         action="store_true",
-        help="Use Interactive Brokers adapter (still simulated if GTP_IBKR_USE_STUB=1)",
+        help="Use Interactive Brokers adapter (set GTP_IBKR_USE_STUB=0 for live TWS)",
     )
+    r.add_argument("--ticker", default=None, help="Signal ticker (default: GTP_SIGNAL_TICKER or AAPL)")
+    r.add_argument(
+        "--asset-class",
+        default=None,
+        choices=["equity", "future", "option", "fx"],
+        help="Asset class (default: GTP_ASSET_CLASS or equity)",
+    )
+    r.add_argument("--demo", action="store_true", help="Use legacy DEMO signal instead of live consensus")
     r.set_defaults(func=cmd_run_once)
 
     rec = sub.add_parser("reconcile", help="Reconcile local vs remote positions")
@@ -288,6 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> None:
+    load_settings()
     argv = argv if argv is not None else sys.argv[1:]
     parser = build_parser()
     args = parser.parse_args(argv)

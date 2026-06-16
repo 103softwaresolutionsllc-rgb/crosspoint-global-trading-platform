@@ -75,14 +75,201 @@ pytest
 python -m fincept_terminal
 ```
 
+### Go live (paper or production)
+
+1. Copy the production template and set secrets:
+
+```bash
+copy config\production.example.env .env   # Windows
+# cp config/production.example.env .env  # Linux/macOS
+```
+
+2. Required settings in `.env`:
+
+| Variable | Purpose |
+|----------|---------|
+| `FRED_API_KEY` | Live macro regime (FRED); omit uses Yahoo fallback |
+| `GTP_IBKR_USE_STUB=0` | Real IBKR positions and order routing |
+| `GTP_IBKR_PORT=7497` | Paper TWS/Gateway (7496 for live) |
+| `GTP_WATCHLIST` | Tickers screened by agent consensus |
+| `GTP_SIGNAL_TICKER` | Primary signal for execution bridge |
+| `GTP_PORTFOLIO_VALUE` | Portfolio value for VaR sizing |
+| `GTP_DASHBOARD_AUTH_ENABLED` | `1` to require login on the web dashboard |
+| `GTP_DASHBOARD_USER` / `GTP_DASHBOARD_PASSWORD` | Credentials shared with ngrok visitors |
+
+3. Quick paper setup (creates `.env` from template):
+
+```powershell
+pwsh scripts/setup-paper.ps1
+# Add FRED_API_KEY to .env, then start IBKR Gateway on port 7497
+```
+
+4. Start IBKR TWS or Gateway, then launch the web dashboard:
+
+```powershell
+pwsh scripts/dev.ps1 -Paper
+# Or manually: $env:PYTHONPATH="src"; python web_dashboard.py
+# Open http://127.0.0.1:8050
+```
+
+Qt desktop app (auto-refreshes every 3 minutes):
+
+```powershell
+$env:PYTHONPATH="src"
+python -m fincept_terminal
+```
+
+5. Run one live consensus workflow (paper):
+
+```bash
+crosspoint run-once --ticker AAPL
+# Legacy demo signal: crosspoint run-once --demo
+```
+
+### Autopilot & dynamic watchlist
+
+Autopilot is started as a script (not a background `.env` toggle). Settings in `.env`:
+
+| Variable | Purpose |
+|----------|---------|
+| `GTP_AUTOPILOT_IBKR=1` | Route autopilot orders through IBKR paper |
+| `GTP_AUTOPILOT_INTERVAL_MINUTES` | Minutes between full watchlist cycles |
+| `GTP_WATCHLIST` | Comma-separated tickers agents screen and trade |
+
+```powershell
+# Start scheduled trading (reads .env; Ctrl+C to stop)
+powershell -ExecutionPolicy Bypass -File scripts/autopilot.ps1
+
+# Dashboard + autopilot together
+powershell -ExecutionPolicy Bypass -File scripts/start-all.ps1 -Autopilot
+```
+
+Refresh the watchlist from Yahoo (most active, day gainers, or day losers):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/update-watchlist.ps1
+powershell -ExecutionPolicy Bypass -File scripts/update-watchlist.ps1 -Screener day_gainers -Count 20
+powershell -ExecutionPolicy Bypass -File scripts/update-watchlist.ps1 -Merge -DryRun
+```
+
+Restart autopilot after updating `GTP_WATCHLIST`. Logs: `var/autopilot.log`.
+
+### Trading without an IBKR account
+
+Set `GTP_IBKR_USE_STUB=1` and `GTP_AUTOPILOT_IBKR=0` in `.env` (default for new setups). You get:
+
+- Live agent consensus, macro (FRED), and Yahoo quotes
+- Simulated order routing for **stocks, futures, options, and FX** tokens in `GTP_WATCHLIST`
+- No IBKR signup or Gateway required
+
+When ready for real paper broker routing, open a **free** [IBKR paper account](https://www.interactivebrokers.com), set `GTP_IBKR_USE_STUB=0`, start Gateway on port 7497, and enable trading permissions in Client Portal.
+
+### Live data vs loading shell
+
+| Source | Live? |
+|--------|-------|
+| Agent consensus, macro (FRED), IBKR positions/balances | Yes, after 30–60s refresh |
+| First paint ("Loading live data…") | Temporary shell only |
+| `GTP_PORTFOLIO_VALUE` | Config fallback when IBKR equity unavailable |
+| Autopilot watchlist cycling | **Not in the web UI** — run `scripts/autopilot.ps1` in a terminal |
+
+The web dashboard **Execute** dropdown picks one ticker from `GTP_WATCHLIST`. Autopilot loops the full watchlist on a schedule in a separate process.
+
+### Options, futures, FX
+
+Use **watchlist tokens** in `GTP_WATCHLIST` and `GTP_SIGNAL_TICKER`:
+
+| Token | Asset |
+|-------|--------|
+| `AAPL` | Stock (default) |
+| `ES:future:202506` | Futures (YYYYMM or YYYYMMDD expiry) |
+| `AAPL:option:20250620:200:C` | Call option |
+| `EURUSD:fx` | Forex |
+
+Default contract fields in `.env` (used when omitted from token):
+
+```env
+GTP_ASSET_CLASS=equity
+GTP_CONTRACT_EXCHANGE=GLOBEX
+GTP_CONTRACT_EXPIRY=202506
+GTP_OPTION_STRIKE=200
+GTP_OPTION_RIGHT=C
+```
+
+Examples:
+
+```env
+GTP_WATCHLIST=AAPL,NVDA,ES:future:202506,EURUSD:fx
+GTP_SIGNAL_TICKER=ES:future:202506
+```
+
+```powershell
+crosspoint run-once --ticker "ES:future:202506" --ibkr
+crosspoint run-once --ticker "AAPL:option:20250620:200:C" --ibkr
+```
+
+Agents score via Yahoo using the **underlying/continuous** symbol (`ES=F`, `AAPL`, `EURUSD=X`). IBKR orders use full contract specs.
+
+### Public dashboard (ngrok + login)
+
+Set a username/password in `.env`, restart the dashboard, then tunnel port 8050:
+
+```powershell
+ngrok http 8050
+```
+
+Visitors open your `https://….ngrok-free.app` URL, click through the ngrok warning once, then enter the dashboard login in the browser prompt. Set `GTP_DASHBOARD_AUTH_ENABLED=0` to disable login for local-only use.
+
+### Deploy on Railway
+
+The repo includes `Dockerfile.railway` and `railway.toml` for the **web dashboard only** (simulated trading — IBKR Gateway cannot run on Railway).
+
+1. Push this repo to GitHub.
+2. In [Railway](https://railway.com): **New Project → Deploy from GitHub repo**.
+3. Railway detects `railway.toml` and builds `Dockerfile.railway`.
+4. Add **Variables** (Settings → Variables) — do not commit secrets:
+
+| Variable | Example |
+|----------|---------|
+| `FRED_API_KEY` | your FRED key |
+| `GTP_IBKR_USE_STUB` | `1` |
+| `GTP_WATCHLIST` | `AAPL,NVDA,ES:future:202609,EURUSD:fx` |
+| `GTP_SIGNAL_TICKER` | `AAPL` |
+| `GTP_DASHBOARD_AUTH_ENABLED` | `1` |
+| `GTP_DASHBOARD_USER` | `crosspoint` |
+| `GTP_DASHBOARD_PASSWORD` | strong password |
+| `GTP_DASHBOARD_SECRET` | random secret string |
+| `GTP_KILL_SWITCH` | `false` |
+
+5. **Settings → Networking → Generate Domain** for a public HTTPS URL.
+6. Open `https://your-app.up.railway.app/login` and sign in.
+
+**Railway limits:**
+
+- **No IBKR** — Gateway must run on your PC; cloud uses simulated orders (`GTP_IBKR_USE_STUB=1`).
+- **Autopilot** — not included in the dashboard container; run `scripts/autopilot.ps1` locally or add a second Railway **worker** service later.
+- **First load** — can take 30–60s while agents fetch data.
+- **Disk** — SQLite audit log is ephemeral unless you attach a Railway volume at `/app/var`.
+
+**CLI deploy (optional):**
+
+```bash
+npm i -g @railway/cli
+railway login
+railway link
+railway up
+```
+
 ---
 
 ## CLI Commands
 
 ```bash
-# Core trading operations
-fincept run-once
-fincept reconcile
+# Core trading operations (live consensus by default)
+crosspoint run-once
+crosspoint run-once --ticker NVDA
+crosspoint run-once --demo          # legacy DEMO signal only
+crosspoint reconcile
 fincept crypto-once
 fincept metrics
 

@@ -34,6 +34,9 @@ class WorkflowResult:
 class TradingWorkflow:
     """
     State machine: data → signal → portfolio → risk → execution → submit.
+
+    Pass ``ConsensusSignalProvider`` (fincept_terminal.trading.bridge) as signal
+    for live agent consensus instead of demo intents.
     """
 
     def __init__(
@@ -50,6 +53,7 @@ class TradingWorkflow:
         audit: AuditLog,
         ledger: PositionLedger,
         metrics: Metrics | None = None,
+        liquidity_gate=None,
     ) -> None:
         self.market_data = market_data
         self.signal = signal
@@ -62,13 +66,25 @@ class TradingWorkflow:
         self.audit = audit
         self.ledger = ledger
         self.metrics = metrics
+        self.liquidity_gate = liquidity_gate
 
     def run_once(self) -> WorkflowResult:
         intent = self.signal.generate_demo_intent()
-        intent = self.portfolio.adjust_intent(intent)
+        mark = self.market_data.mark_price(intent.instrument)
+        intent = self.portfolio.adjust_intent(intent, mark_price=mark)
         self.audit.append("intent_created", {"intent": to_jsonable(intent)})
 
-        mark = self.market_data.mark_price(intent.instrument)
+        if self.liquidity_gate is not None:
+            sym = intent.instrument.symbol
+            if not self.liquidity_gate.execution_allowed(sym):
+                reason = getattr(self.liquidity_gate, "pause_reason", lambda _s: "toxic flow")(sym)
+                return WorkflowResult(
+                    intent=intent,
+                    risk=None,
+                    order=None,
+                    skipped_reason=f"liquidity_gate: {reason}",
+                )
+
         decision = self.risk.check(intent, mark_price=mark)
         self.audit.append("risk_check", {"decision": asdict(decision)})
         if not decision.allowed:

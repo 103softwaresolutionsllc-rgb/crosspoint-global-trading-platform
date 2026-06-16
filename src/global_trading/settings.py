@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 
 def _b(name: str, default: bool) -> bool:
@@ -29,10 +30,22 @@ def _s(name: str, default: str) -> str:
     return os.environ.get(name, default)
 
 
-def _load_dotenv(path: str = ".env") -> None:
-    if not os.path.isfile(path):
+def _repo_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def _load_dotenv(path: str | None = None) -> None:
+    """Load repo-root .env into os.environ (first value wins per key)."""
+    candidates = []
+    if path:
+        candidates.append(Path(path))
+    else:
+        candidates.append(_repo_root() / ".env")
+        candidates.append(Path.cwd() / ".env")
+    env_file = next((p for p in candidates if p.is_file()), None)
+    if env_file is None:
         return
-    with open(path, encoding="utf-8") as f:
+    with open(env_file, encoding="utf-8") as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"):
@@ -63,6 +76,11 @@ class Settings:
     crypto_sandbox: bool = True
     log_format: str = "json"
     audit_db_path: str = "var/audit.sqlite3"
+    asset_class: str = "equity"
+    contract_exchange: str = ""
+    contract_expiry: str = ""
+    option_strike: str = ""
+    option_right: str = "C"
 
 
 def load_settings() -> Settings:
@@ -87,4 +105,9 @@ def load_settings() -> Settings:
         crypto_sandbox=_b("GTP_CRYPTO_SANDBOX", True),
         log_format=lf,
         audit_db_path=_s("GTP_AUDIT_DB_PATH", "var/audit.sqlite3"),
+        asset_class=_s("GTP_ASSET_CLASS", "equity"),
+        contract_exchange=_s("GTP_CONTRACT_EXCHANGE", ""),
+        contract_expiry=_s("GTP_CONTRACT_EXPIRY", ""),
+        option_strike=_s("GTP_OPTION_STRIKE", ""),
+        option_right=_s("GTP_OPTION_RIGHT", "C"),
     )

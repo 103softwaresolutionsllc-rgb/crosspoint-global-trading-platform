@@ -14,6 +14,7 @@ from typing import Dict, Any
 import numpy as np
 
 from ..base import BaseAgent, AgentResult, AgentType, Recommendation
+from ..macro_context import apply_macro_to_result, resolve_macro
 
 
 class IanDunlapAgent(BaseAgent):
@@ -47,6 +48,7 @@ class IanDunlapAgent(BaseAgent):
     async def analyze(self, ticker: str, **kwargs) -> AgentResult:
         """Analyze a stock using an Ian Dunlap-inspired quality growth framework."""
         try:
+            macro = await resolve_macro(kwargs)
             financial_data = await self._get_financial_data(ticker)
 
             quality_metrics = await self._calculate_quality_metrics(financial_data)
@@ -98,7 +100,7 @@ class IanDunlapAgent(BaseAgent):
                 compounder_score,
             )
 
-            return AgentResult(
+            result = AgentResult(
                 agent_name=self.name,
                 ticker=ticker.upper(),
                 recommendation=recommendation,
@@ -122,6 +124,7 @@ class IanDunlapAgent(BaseAgent):
                     "portfolio_bias": "Market leaders with durable moats",
                 },
             )
+            return apply_macro_to_result(result, macro, "dunlap")
 
         except Exception as e:
             return AgentResult(

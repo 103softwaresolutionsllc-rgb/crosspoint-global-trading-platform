@@ -14,6 +14,7 @@ from typing import Dict, Any
 import numpy as np
 
 from ..base import BaseAgent, AgentResult, AgentType, Recommendation
+from ..macro_context import apply_macro_to_result, resolve_macro
 
 
 class LynchAgent(BaseAgent):
@@ -47,6 +48,7 @@ class LynchAgent(BaseAgent):
     async def analyze(self, ticker: str, **kwargs) -> AgentResult:
         """Analyze stock using Peter Lynch's principles"""
         try:
+            macro = await resolve_macro(kwargs)
             # Get financial data
             financial_data = await self._get_financial_data(ticker)
             
@@ -87,7 +89,7 @@ class LynchAgent(BaseAgent):
             risk_factors = await self._identify_lynch_risks(financial_data, lynch_metrics)
             catalysts = await self._identify_lynch_catalysts(financial_data, lynch_metrics)
             
-            return AgentResult(
+            result = AgentResult(
                 agent_name=self.name,
                 ticker=ticker.upper(),
                 recommendation=recommendation,
@@ -111,6 +113,7 @@ class LynchAgent(BaseAgent):
                     'target_return': '10x potential (10-bagger)',
                 }
             )
+            return apply_macro_to_result(result, macro, "lynch")
             
         except Exception as e:
             return AgentResult(

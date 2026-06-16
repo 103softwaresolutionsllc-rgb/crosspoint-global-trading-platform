@@ -13,6 +13,7 @@ from typing import Dict, Any
 import numpy as np
 
 from ..base import BaseAgent, AgentResult, AgentType, Recommendation
+from ..macro_context import apply_macro_to_result, resolve_macro
 
 
 class BuffettAgent(BaseAgent):
@@ -46,6 +47,7 @@ class BuffettAgent(BaseAgent):
     async def analyze(self, ticker: str, **kwargs) -> AgentResult:
         """Analyze stock using Warren Buffett's principles"""
         try:
+            macro = await resolve_macro(kwargs)
             # Get financial data
             financial_data = await self._get_financial_data(ticker)
             
@@ -84,7 +86,7 @@ class BuffettAgent(BaseAgent):
             risk_factors = await self._identify_buffett_risks(financial_data, buffett_metrics)
             catalysts = await self._identify_buffett_catalysts(financial_data, buffett_metrics)
             
-            return AgentResult(
+            result = AgentResult(
                 agent_name=self.name,
                 ticker=ticker.upper(),
                 recommendation=recommendation,
@@ -107,6 +109,7 @@ class BuffettAgent(BaseAgent):
                     'risk_tolerance': 'Low to Medium',
                 }
             )
+            return apply_macro_to_result(result, macro, "buffett")
             
         except Exception as e:
             return AgentResult(

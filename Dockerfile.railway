@@ -1,0 +1,29 @@
+# Railway dashboard image — simulated multi-asset mode (no IBKR Gateway on cloud)
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-railway.txt .
+RUN pip install --no-cache-dir -r requirements-railway.txt
+
+COPY pyproject.toml README.md ./
+COPY src ./src
+COPY web_dashboard.py ./
+COPY assets ./assets
+
+RUN pip install --no-cache-dir -e . --no-deps
+
+ENV PYTHONPATH=/app/src
+ENV GTP_IBKR_USE_STUB=1
+ENV GTP_PAPER_FIRST=true
+ENV GTP_AUDIT_DB_PATH=/app/var/audit.sqlite3
+ENV DASH_DEBUG=0
+
+RUN mkdir -p /app/var
+
+EXPOSE 8050
+
+CMD ["python", "web_dashboard.py"]

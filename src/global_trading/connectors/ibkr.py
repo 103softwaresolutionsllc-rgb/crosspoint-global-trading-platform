@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -15,17 +16,92 @@ from global_trading.core.domain import (
     Position,
     Venue,
 )
+from global_trading.asyncio_compat import ensure_event_loop
 from global_trading.connectors.fake import FakeConnector
+from global_trading.instruments import contract_spec_from_env
 from global_trading.observability.metrics import Metrics
 
 if TYPE_CHECKING:
-    pass
+    from ib_insync import IB, Forex, Future, MarketOrder, Option, Stock  # noqa: F401
 
-try:
-    from ib_insync import IB, Forex, MarketOrder, Stock  # type: ignore[import-not-found]
-except ImportError:
-    IB = None  # type: ignore[misc, assignment]
-    Stock = Forex = MarketOrder = None  # type: ignore[misc, assignment]
+IB = None  # type: ignore[misc, assignment]
+Stock = Forex = Future = Option = MarketOrder = None  # type: ignore[misc, assignment]
+_ib_import_error: str | None = None
+
+
+def _load_ib_insync() -> tuple[Any, ...]:
+    """Lazy import — ib_insync/eventkit require an event loop on Python 3.10+."""
+    global IB, Stock, Forex, Future, Option, MarketOrder, _ib_import_error
+    if IB is not None:
+        return IB, Stock, Forex, Future, Option, MarketOrder
+    try:
+        ensure_event_loop()
+        from ib_insync import IB as _IB
+        from ib_insync import Forex as _Forex
+        from ib_insync import Future as _Future
+        from ib_insync import MarketOrder as _MarketOrder
+        from ib_insync import Option as _Option
+        from ib_insync import Stock as _Stock
+
+        IB, Stock, Forex, Future, Option, MarketOrder = (
+            _IB,
+            _Stock,
+            _Forex,
+            _Future,
+            _Option,
+            _MarketOrder,
+        )
+        _ib_import_error = None
+        return IB, Stock, Forex, Future, Option, MarketOrder
+    except ImportError as exc:
+        _ib_import_error = str(exc)
+        return None, None, None, None, None, None  # type: ignore[return-value]
+
+
+def _sec_type_to_asset_class(sec_type: str) -> AssetClass:
+    mapping = {
+        "STK": AssetClass.EQUITY,
+        "FUT": AssetClass.FUTURES,
+        "OPT": AssetClass.OPTION,
+        "CASH": AssetClass.FX,
+    }
+    return mapping.get((sec_type or "STK").upper(), AssetClass.EQUITY)
+
+
+def _build_ib_contract(inst: InstrumentId) -> Any:
+    _load_ib_insync()
+    sym = inst.symbol
+    spec = {**contract_spec_from_env(), **(inst.extra or {})}
+    exchange = spec.get("exchange") or "SMART"
+    currency = spec.get("currency") or "USD"
+
+    if inst.asset_class == AssetClass.FX:
+        if Forex is None:
+            raise RuntimeError("ib_insync Forex unavailable")
+        return Forex(sym.replace("/", ""))
+    if inst.asset_class == AssetClass.FUTURES:
+        if Future is None:
+            raise RuntimeError("ib_insync Future unavailable")
+        expiry = spec.get("expiry") or ""
+        if not expiry:
+            raise ValueError(
+                f"Futures {sym} require expiry — use ES:future:202506 or GTP_CONTRACT_EXPIRY in .env"
+            )
+        return Future(sym, expiry, exchange)
+    if inst.asset_class == AssetClass.OPTION:
+        if Option is None:
+            raise RuntimeError("ib_insync Option unavailable")
+        expiry = spec.get("expiry") or ""
+        strike = spec.get("strike") or ""
+        right = (spec.get("right") or "C").upper()
+        if not expiry or not strike:
+            raise ValueError(
+                f"Options {sym} require expiry/strike — use AAPL:option:YYYYMMDD:STRIKE:C or .env fields"
+            )
+        return Option(sym, expiry, float(strike), right, exchange)
+    if Stock is None:
+        raise RuntimeError("ib_insync Stock unavailable")
+    return Stock(sym, exchange, currency)
 
 
 class InteractiveBrokersConnector:
@@ -49,6 +125,7 @@ class InteractiveBrokersConnector:
         self._host = host
         self._port = port
         self._client_id = client_id
+        _load_ib_insync()
         self._use_stub = use_stub or IB is None
         self._metrics = metrics
         self._stub = FakeConnector(account_id=account_id, metrics=metrics)
@@ -57,9 +134,12 @@ class InteractiveBrokersConnector:
     def _ensure_ib(self) -> Any:
         if self._use_stub:
             return None
+        _load_ib_insync()
         if IB is None:
-            raise RuntimeError("ib_insync not installed; pip install 'global-trading-platform[ibkr]'")
+            hint = _ib_import_error or "ib_insync not installed"
+            raise RuntimeError(f"{hint}; pip install ib-insync")
         if self._ib is None:
+            ensure_event_loop()
             self._ib = IB()
             self._ib.connect(self._host, self._port, clientId=self._client_id)
         return self._ib
@@ -71,16 +151,7 @@ class InteractiveBrokersConnector:
 
         ib = self._ensure_ib()
         assert ib is not None
-        inst = order.instrument
-        sym = inst.symbol
-        if inst.asset_class == AssetClass.FX:
-            if Forex is None:
-                raise RuntimeError("ib_insync Forex unavailable")
-            contract = Forex(sym.replace("/", ""))
-        else:
-            if Stock is None:
-                raise RuntimeError("ib_insync Stock unavailable")
-            contract = Stock(sym, "SMART", "USD")
+        contract = _build_ib_contract(order.instrument)
         ib.qualifyContracts(contract)
         action = "BUY" if order.side == OrderSide.BUY else "SELL"
         if order.order_type == OrderType.MARKET:
@@ -115,11 +186,13 @@ class InteractiveBrokersConnector:
         assert ib is not None
         result: list[Position] = []
         for p in ib.positions():
-            sym = getattr(p.contract, "symbol", "") or str(p.contract)
+            c = p.contract
+            sym = getattr(c, "symbol", "") or str(c)
+            sec_type = getattr(c, "secType", "STK")
             iid = InstrumentId(
                 symbol=sym,
                 venue=Venue.INTERACTIVE_BROKERS,
-                asset_class=AssetClass.EQUITY,
+                asset_class=_sec_type_to_asset_class(sec_type),
             )
             result.append(
                 Position(
@@ -139,8 +212,8 @@ class InteractiveBrokersConnector:
         assert ib is not None
         out: dict[str, Money] = {}
         for v in ib.accountValues():
-            if v.tag == "TotalCashValue" and v.currency:
-                out[v.currency] = Money(amount=float(v.value), currency=v.currency)
+            if v.tag in ("TotalCashValue", "NetLiquidation", "BuyingPower") and v.currency:
+                out[f"{v.tag}:{v.currency}"] = Money(amount=float(v.value), currency=v.currency)
         return out
 
     def disconnect(self) -> None:

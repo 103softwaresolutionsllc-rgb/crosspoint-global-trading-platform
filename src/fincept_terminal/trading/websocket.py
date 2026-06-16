@@ -442,19 +442,24 @@ class RealTimeDataFeed:
     - Technical indicator calculation
     - Alert system
     - Historical data integration
+    - Liquidity gate hooks (OBI / spread toxicity)
     """
     
-    def __init__(self, websocket_manager: WebSocketManager):
+    def __init__(self, websocket_manager: WebSocketManager, liquidity_gate=None):
         self.ws_manager = websocket_manager
         self.data_cache: Dict[str, List[MarketData]] = defaultdict(list)
         self.trade_cache: Dict[str, List[TradeData]] = defaultdict(list)
+        self.orderbook_cache: Dict[str, OrderBookData] = {}
         self.alerts: List[Dict[str, Any]] = []
         self.indicators: Dict[str, Dict[str, float]] = defaultdict(dict)
         self.max_cache_size = 1000
+        self.liquidity_gate = liquidity_gate
+        self._banner_callbacks: List[Callable] = []
         
         # Register data handlers
         self.ws_manager.add_data_handler('quote', self._handle_market_data)
         self.ws_manager.add_data_handler('trade', self._handle_trade_data)
+        self.ws_manager.add_data_handler('orderbook', self._handle_order_book)
     
     async def _handle_market_data(self, data: MarketData):
         """Handle incoming market data"""
@@ -472,6 +477,14 @@ class RealTimeDataFeed:
         
         # Check alerts
         await self._check_alerts(symbol, data)
+
+        if data.bid and data.ask and self.liquidity_gate is not None:
+            self.liquidity_gate.on_quote_spread(symbol, data.bid, data.ask)
+
+        if self._banner_callbacks and len(self.data_cache[symbol]) >= 2:
+            prev = self.data_cache[symbol][-2].price
+            chg = ((data.price / prev) - 1) * 100 if prev else 0.0
+            self.emit_quote_to_banner(symbol, data.price, chg)
     
     async def _handle_trade_data(self, data: TradeData):
         """Handle incoming trade data"""
@@ -483,6 +496,35 @@ class RealTimeDataFeed:
         # Limit cache size
         if len(self.trade_cache[symbol]) > self.max_cache_size:
             self.trade_cache[symbol].pop(0)
+
+        # Keep quote cache warm from trades for get_latest_price
+        quote = MarketData(
+            symbol=symbol,
+            timestamp=data.timestamp,
+            price=data.price,
+            volume=data.size,
+            exchange=data.exchange,
+        )
+        self.data_cache[symbol].append(quote)
+        if len(self.data_cache[symbol]) > self.max_cache_size:
+            self.data_cache[symbol].pop(0)
+
+    async def _handle_order_book(self, data: OrderBookData):
+        """Handle order book updates and feed liquidity gate."""
+        self.orderbook_cache[data.symbol] = data
+        if self.liquidity_gate is not None:
+            self.liquidity_gate.on_order_book(data)
+
+    def add_banner_callback(self, callback: Callable) -> None:
+        """Register UI callback: fn(symbol, price, change_pct)."""
+        self._banner_callbacks.append(callback)
+
+    def emit_quote_to_banner(self, symbol: str, price: float, change_pct: float = 0.0) -> None:
+        for cb in self._banner_callbacks:
+            try:
+                cb(symbol, price, change_pct)
+            except Exception:
+                pass
     
     async def _update_indicators(self, symbol: str):
         """Update technical indicators for a symbol"""

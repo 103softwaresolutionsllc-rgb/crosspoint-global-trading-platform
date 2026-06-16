@@ -1,0 +1,42 @@
+{
+  "name": "Agent Screening Pipeline",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "yahoo",
+      "type": "data/yahoo",
+      "title": "Yahoo Finance",
+      "config": { "ticker": "AAPL" }
+    },
+    {
+      "id": "dcf",
+      "type": "analytics/dcf",
+      "title": "DCF Analysis",
+      "config": {}
+    },
+    {
+      "id": "consensus",
+      "type": "agent/consensus",
+      "title": "Agent Consensus",
+      "config": { "ticker": "AAPL" }
+    },
+    {
+      "id": "risk",
+      "type": "trading/risk_check",
+      "title": "Risk Check",
+      "config": { "equity": 100000 }
+    },
+    {
+      "id": "alert",
+      "type": "output/alert",
+      "title": "Alert",
+      "config": { "message": "Screening complete" }
+    }
+  ],
+  "connections": [
+    { "from_node": "yahoo", "to_node": "dcf" },
+    { "from_node": "dcf", "to_node": "consensus" },
+    { "from_node": "consensus", "to_node": "risk" },
+    { "from_node": "risk", "to_node": "alert" }
+  ]
+}

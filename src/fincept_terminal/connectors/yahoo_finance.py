@@ -289,17 +289,28 @@ class YahooFinanceConnector:
             if not news:
                 return []
             
-            # Limit to requested count and format
             formatted_news = []
             for item in news[:count]:
+                content = item.get('content') or item
+                provider = content.get('provider') or {}
+                link = item.get('link', '')
+                for key in ('clickThroughUrl', 'canonicalUrl'):
+                    url_obj = content.get(key) or item.get(key)
+                    if isinstance(url_obj, dict) and url_obj.get('url'):
+                        link = url_obj['url']
+                        break
                 formatted_news.append({
-                    'title': item.get('title', ''),
-                    'publisher': item.get('publisher', ''),
-                    'link': item.get('link', ''),
-                    'published': item.get('providerPublishTime', ''),
-                    'summary': item.get('summary', ''),
+                    'title': content.get('title') or item.get('title', ''),
+                    'publisher': provider.get('displayName') or item.get('publisher', ''),
+                    'link': link,
+                    'published': (
+                        content.get('displayTime')
+                        or content.get('pubDate')
+                        or item.get('providerPublishTime', '')
+                    ),
+                    'summary': content.get('summary') or item.get('summary', ''),
                 })
-            
+
             return formatted_news
             
         except Exception as e:

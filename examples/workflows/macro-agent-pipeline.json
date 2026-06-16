@@ -1,0 +1,28 @@
+{
+  "name": "FRED Macro → Agent Consensus Pipeline",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "fred",
+      "type": "data/fred",
+      "title": "FRED Macro Snapshot",
+      "config": { "mode": "macro_snapshot", "force_refresh": false }
+    },
+    {
+      "id": "consensus",
+      "type": "agent/consensus",
+      "title": "Agent Consensus",
+      "config": { "ticker": "AAPL" }
+    },
+    {
+      "id": "alert",
+      "type": "output/alert",
+      "title": "Alert",
+      "config": { "message": "Macro-informed consensus complete" }
+    }
+  ],
+  "connections": [
+    { "from_node": "fred", "to_node": "consensus" },
+    { "from_node": "consensus", "to_node": "alert" }
+  ]
+}

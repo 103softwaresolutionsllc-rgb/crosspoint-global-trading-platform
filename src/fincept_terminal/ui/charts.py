@@ -472,3 +472,44 @@ class TechnicalChart(ChartWidget):
             
             painter.fillRect(x - candle_width/2, min(body_top, body_bottom), 
                            candle_width, body_height, color)
+
+
+class SparklineWidget(QWidget):
+    """Minimal 30-day sparkline for position chart drawers."""
+
+    def __init__(self, prices: List[float], positive: bool = True, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.prices = prices or [1.0, 1.0]
+        self.color = QColor(0, 255, 136) if positive else QColor(255, 71, 87)
+        self.fill = QColor(0, 255, 136, 20) if positive else QColor(255, 71, 87, 20)
+        self.setMinimumHeight(60)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w, h = self.width(), self.height()
+        if w < 2 or not self.prices:
+            return
+
+        mn, mx = min(self.prices), max(self.prices)
+        rng = mx - mn or 1.0
+        step = w / max(len(self.prices) - 1, 1)
+
+        path = QPainterPath()
+        fill_path = QPainterPath()
+        for i, p in enumerate(self.prices):
+            x = i * step
+            y = h - ((p - mn) / rng) * (h - 4) - 2
+            if i == 0:
+                path.moveTo(x, y)
+                fill_path.moveTo(x, h)
+                fill_path.lineTo(x, y)
+            else:
+                path.lineTo(x, y)
+                fill_path.lineTo(x, y)
+        fill_path.lineTo((len(self.prices) - 1) * step, h)
+        fill_path.closeSubpath()
+
+        painter.fillPath(fill_path, QBrush(self.fill))
+        painter.setPen(QPen(self.color, 1.5))
+        painter.drawPath(path)

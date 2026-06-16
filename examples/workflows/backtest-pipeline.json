@@ -1,0 +1,35 @@
+{
+  "name": "Backtest + Risk Pipeline",
+  "version": "1.0",
+  "nodes": [
+    {
+      "id": "yahoo",
+      "type": "data/yahoo",
+      "title": "Yahoo Finance",
+      "config": { "ticker": "SPY" }
+    },
+    {
+      "id": "risk_metrics",
+      "type": "analytics/risk",
+      "title": "Risk Metrics",
+      "config": {}
+    },
+    {
+      "id": "risk_gate",
+      "type": "trading/risk_check",
+      "title": "Risk Gate",
+      "config": { "equity": 100000, "kill_switch": false }
+    },
+    {
+      "id": "report",
+      "type": "output/report",
+      "title": "Report",
+      "config": {}
+    }
+  ],
+  "connections": [
+    { "from_node": "yahoo", "to_node": "risk_metrics" },
+    { "from_node": "risk_metrics", "to_node": "risk_gate" },
+    { "from_node": "risk_gate", "to_node": "report" }
+  ]
+}

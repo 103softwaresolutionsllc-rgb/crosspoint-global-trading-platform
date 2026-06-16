@@ -14,18 +14,24 @@ class RiskConfig:
     max_notional_per_order: float | None = None
     max_position_qty: dict[str, float] = field(default_factory=dict)
     allowed_prefixes: list[str] | None = None
+    max_drawdown_pct: float | None = None
+    var_position_fraction: float | None = None
 
     def __post_init__(self) -> None:
         if self.max_daily_loss_base < 0:
             raise ValueError("max_daily_loss_base must be non-negative")
+        if self.max_drawdown_pct is not None and not 0 < self.max_drawdown_pct <= 1:
+            raise ValueError("max_drawdown_pct must be between 0 and 1")
 
 
 @dataclass
 class RiskState:
-    """Tracks daily PnL approximation for guardrails."""
+    """Tracks daily PnL and portfolio drawdown for guardrails."""
 
     day: date
     realized_pnl_base: float = 0.0
+    peak_equity: float = 0.0
+    current_equity: float = 0.0
 
 
 @dataclass
@@ -50,6 +56,18 @@ class RiskEngine:
         self._rollover_if_needed()
         self.state.realized_pnl_base += delta_base
 
+    def update_equity(self, equity: float) -> None:
+        """Update peak equity and current equity for drawdown checks."""
+        self._rollover_if_needed()
+        self.state.current_equity = equity
+        if equity > self.state.peak_equity:
+            self.state.peak_equity = equity
+
+    def current_drawdown_pct(self) -> float:
+        if self.state.peak_equity <= 0:
+            return 0.0
+        return (self.state.peak_equity - self.state.current_equity) / self.state.peak_equity
+
     def evaluate_intent(
         self,
         intent: TradeIntent,
@@ -63,6 +81,11 @@ class RiskEngine:
 
         if self.state.realized_pnl_base <= -abs(self.config.max_daily_loss_base):
             return RiskDecision(allowed=False, reason="max_daily_loss_breached")
+
+        if self.config.max_drawdown_pct is not None:
+            dd = self.current_drawdown_pct()
+            if dd >= self.config.max_drawdown_pct:
+                return RiskDecision(allowed=False, reason="max_drawdown_breached")
 
         sym = intent.instrument.symbol
         if self.config.allowed_prefixes:
