@@ -352,7 +352,7 @@ def _health_check():
 def _protect_dashboard():
     if not _dashboard_auth_enabled():
         return None
-    if request.path in ("/login", "/logout", "/health"):
+    if request.path in ("/login", "/logout", "/health") or request.path.startswith("/assets/"):
         return None
     if session.get("dashboard_authenticated"):
         return None
