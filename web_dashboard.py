@@ -139,7 +139,13 @@ def _tradeable_universe_panel() -> html.Div:
         rows.append(
             html.Div(
                 [
-                    html.Span(spec.symbol, className="tu-symbol"),
+                    html.Button(
+                        spec.symbol,
+                        id=_chart_btn_id(spec.raw or spec.symbol),
+                        className="tu-symbol-btn",
+                        title=f"Open {spec.symbol} chart",
+                        n_clicks=0,
+                    ),
                     html.Span(
                         spec.asset_class.value.upper(),
                         className="tu-class",
@@ -1260,6 +1266,8 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
 .tu-header {{ color:{C['dim']}; font-size:9px; text-transform:uppercase; letter-spacing:0.04em; border-bottom:1px solid {C['border']}; }}
 .tu-row {{ background:{C['card']}; border-radius:6px; border:1px solid {C['border']}; }}
 .tu-symbol {{ font-weight:600; }}
+.tu-symbol-btn {{ font-weight:600; border:none; background:transparent; padding:0; text-align:left; cursor:pointer; color:{C['text']}; font-family:inherit; font-size:inherit; }}
+.tu-symbol-btn:hover {{ color:{C['accent']}; text-decoration:underline; }}
 .tu-class {{ font-weight:700; font-size:10px; }}
 .tu-data {{ color:{C['dim']}; font-size:10px; }}
 .tu-route {{ font-size:10px; font-weight:600; }}
