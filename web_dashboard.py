@@ -261,26 +261,31 @@ _LOGIN_PAGE = """<!DOCTYPE html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Crosspoint Login</title>
+  <title>Crosspoint Global Trading Platform</title>
+  <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+  <link rel="shortcut icon" type="image/x-icon" href="/assets/favicon.ico" />
   <style>
     body { margin: 0; min-height: 100vh; display: grid; place-items: center;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
       font-family: Segoe UI, Arial, sans-serif; color: #fff; }
     .card { width: min(92vw, 380px); background: #2a2a4a; border: 1px solid #3a3a6a;
       border-radius: 12px; padding: 28px; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
-    h1 { margin: 0 0 6px; font-size: 1.35rem; color: #00d4ff; }
-    p { margin: 0 0 20px; color: #b8b8d0; font-size: .92rem; }
+    h1 { margin: 0 0 6px; font-size: 1.35rem; color: #00d4ff; text-align: center; }
+    p { margin: 0 0 20px; color: #b8b8d0; font-size: .92rem; text-align: center; }
     label { display: block; margin-bottom: 6px; color: #b8b8d0; font-size: .85rem; }
     input { width: 100%; box-sizing: border-box; margin-bottom: 14px; padding: 10px 12px;
       border-radius: 8px; border: 1px solid #3a3a6a; background: #1f1f3a; color: #fff; }
     button { width: 100%; padding: 11px; border: 0; border-radius: 8px; cursor: pointer;
       background: #00d4ff; color: #0f172a; font-weight: 700; }
-    .err { margin-bottom: 12px; color: #ff4757; font-size: .88rem; }
+    .err { margin-bottom: 12px; color: #ff4757; font-size: .88rem; text-align: center; }
   </style>
 </head>
 <body>
   <form class="card" method="post" action="{{ action }}">
-    <h1>Crosspoint Global Trading</h1>
+    <div style="text-align: center; margin-bottom: 20px;">
+      <img src="/assets/android-chrome-192x192.png" alt="Crosspoint Logo" style="width: 80px; height: 80px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.25);" />
+    </div>
+    <h1>Crosspoint Global Trading Platform</h1>
     <p>Sign in to view the dashboard.</p>
     {% if error %}<div class="err">{{ error }}</div>{% endif %}
     <label for="username">Username</label>
@@ -288,6 +293,9 @@ _LOGIN_PAGE = """<!DOCTYPE html>
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required />
     <button type="submit">Sign in</button>
+    <div style="text-align: center; margin-top: 24px; font-size: 0.78rem; color: #8888aa;">
+      Made with ❤️ by 103 Software Solutions LLC
+    </div>
   </form>
 </body>
 </html>"""
@@ -1127,6 +1135,11 @@ def create_layout():
                         id="footer-note",
                         children=f"Signal {state.signal_ticker} · {state.data_source}",
                         className="footer-note",
+                    ),
+                    html.Span(
+                        "Made with ❤️ by 103 Software Solutions LLC",
+                        className="footer-credit",
+                        style={"fontSize": "11px", "color": C["muted"], "fontWeight": "500"},
                     ),
                     html.Button("Refresh ↻", className="footer-btn", id="refresh-btn"),
                 ],
