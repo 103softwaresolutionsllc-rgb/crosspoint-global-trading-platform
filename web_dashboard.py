@@ -214,7 +214,11 @@ def set_state(state: Phase2DashboardState) -> None:
 
 
 def _yf_symbol(ticker: str) -> str:
-    return ticker.replace("/", "-")
+    try:
+        spec = apply_env_defaults(parse_instrument_token(ticker))
+        return analysis_ticker(spec)
+    except Exception:
+        return ticker.replace("/", "-")
 
 
 _chart_btn_seq = 0

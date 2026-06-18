@@ -317,7 +317,7 @@ src/
 │   │   ├── brokers/          # 16 broker integrations
 │   │   ├── websocket.py      # Real-time data
 │   │   └── execution.py
-│   └── ui/                   # Qt6 interface
+│   └── ui/                   # Qt6 interfaces
 │       ├── dashboard.py
 │       ├── node_editor.py
 │       └── charts.py

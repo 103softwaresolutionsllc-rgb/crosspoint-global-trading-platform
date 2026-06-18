@@ -184,7 +184,7 @@ def placeholder_dashboard_state() -> Phase2DashboardState:
 
 
 def _env_watchlist() -> list[str]:
-    raw = os.environ.get("GTP_WATCHLIST", "AAPL,NVDA,MSFT,GOOGL")
+    raw = os.environ.get("GTP_WATCHLIST", "AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,NFLX")
     out: list[str] = []
     for token in raw.split(","):
         token = token.strip()
@@ -216,7 +216,11 @@ def _env_portfolio_value() -> float:
 
 
 def _yf_symbol(ticker: str) -> str:
-    return ticker.replace("/", "-")
+    try:
+        spec = apply_env_defaults(parse_instrument_token(ticker))
+        return analysis_ticker(spec)
+    except Exception:
+        return ticker.replace("/", "-")
 
 
 def _tape_label(symbol: str) -> str:
@@ -360,9 +364,28 @@ def _load_broker_snapshot(settings) -> tuple[list[PositionItem], bool, float | N
         for pos in raw:
             if abs(pos.quantity) < 1e-9:
                 continue
-            sym = pos.instrument.symbol
+            inst = pos.instrument
+            if inst.asset_class == AssetClass.FUTURES:
+                token = f"{inst.symbol}:future"
+            elif inst.asset_class == AssetClass.FX:
+                token = f"{inst.symbol}:fx"
+            elif inst.asset_class == AssetClass.CRYPTO:
+                token = f"{inst.symbol}:crypto"
+            elif inst.asset_class == AssetClass.OPTION:
+                expiry = inst.extra.get("expiry")
+                strike = inst.extra.get("strike")
+                right = inst.extra.get("right") or "C"
+                if expiry and strike:
+                    token = f"{inst.symbol}:option:{expiry}:{strike}:{right}"
+                else:
+                    token = f"{inst.symbol}:option"
+            else:
+                token = inst.symbol
+
+            # Resolve to valid yfinance symbol
+            yf_sym = _yf_symbol(token)
             try:
-                mark = float(yf.Ticker(_yf_symbol(sym)).history(period="5d")["Close"].dropna().iloc[-1])
+                mark = float(yf.Ticker(yf_sym).history(period="5d")["Close"].dropna().iloc[-1])
             except Exception:
                 mark = float(pos.avg_price or 0)
             avg = float(pos.avg_price or mark)
@@ -370,10 +393,10 @@ def _load_broker_snapshot(settings) -> tuple[list[PositionItem], bool, float | N
             pnl_pct = ((mark / avg) - 1) * 100 if avg else 0.0
             side = "Long" if pos.quantity > 0 else "Short"
             qty_label = f"{abs(pos.quantity):g} shares"
-            if sym.startswith("BTC"):
+            if inst.symbol.startswith("BTC"):
                 qty_label = f"{abs(pos.quantity):g} BTC"
             items.append(
-                PositionItem(sym, side, qty_label, round(pnl, 2), round(pnl_pct, 2), _fetch_sparkline(sym))
+                PositionItem(token, side, qty_label, round(pnl, 2), round(pnl_pct, 2), _fetch_sparkline(token))
             )
         return items, connected, cash, equity, error
     finally:
