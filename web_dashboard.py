@@ -1016,7 +1016,7 @@ def create_layout():
                                 children=state.timestamp,
                                 style={"fontSize": "11px", "color": C["dim"], "marginLeft": "4px"},
                             ),
-                        ],
+                        ] + ([html.A("Logout ⎋", href="/logout", className="logout-btn", style={"marginLeft": "10px"})] if _dashboard_auth_enabled() else []),
                         className="status-row",
                     ),
                 ],
@@ -1364,6 +1364,8 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
 .footer {{ padding:8px 16px; border-top:1px solid {C['border']}; background:{C['card']}; display:flex; align-items:center; justify-content:space-between; }}
 .footer-note {{ font-size:10px; color:{C['dim']}; }}
 .footer-btn {{ font-size:11px; color:{C['pos']}; background:rgba(0,255,136,0.08); border:1px solid {C['pos']}; border-radius:6px; padding:4px 10px; cursor:pointer; }}
+.logout-btn {{ font-size:11px; color:{C['neg']}; background:rgba(255,71,87,0.08); border:1px solid {C['neg']}; border-radius:6px; padding:4px 10px; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; transition:background 0.15s ease; }}
+.logout-btn:hover {{ background:rgba(255,71,87,0.18); }}
 
 @media (max-width: 900px) {{
   .main {{ grid-template-columns: 1fr; }}
