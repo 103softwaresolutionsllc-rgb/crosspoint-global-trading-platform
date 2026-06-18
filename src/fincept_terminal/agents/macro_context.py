@@ -121,7 +121,7 @@ def _fallback_snapshot() -> MacroSnapshot:
 
 async def fetch_macro_snapshot(api_key: str | None = None) -> MacroSnapshot:
     """Fetch key FRED series and build normalized macro snapshot."""
-    key = api_key or os.environ.get(FRED_API_KEY_ENV, "")
+    key = api_key if api_key is not None else os.environ.get(FRED_API_KEY_ENV, "")
     if not key or key == "YOUR_FRED_API_KEY":
         return _fallback_snapshot()
 

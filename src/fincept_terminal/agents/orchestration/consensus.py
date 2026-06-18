@@ -15,6 +15,7 @@ from fincept_terminal.agents.value_investors.buffett import BuffettAgent
 from fincept_terminal.agents.value_investors.dunlap import IanDunlapAgent
 from fincept_terminal.agents.value_investors.graham import GrahamAgent
 from fincept_terminal.agents.value_investors.lynch import LynchAgent
+from fincept_terminal.agents.quant_agents.simons import SimonsAgent
 
 _RECOMMENDATION_SCORES: dict[Recommendation, float] = {
     Recommendation.STRONG_BUY: 2.0,
@@ -29,6 +30,7 @@ DEFAULT_AGENT_WEIGHTS: dict[str, float] = {
     "Benjamin Graham": 1.0,
     "Peter Lynch": 1.0,
     "Ian Dunlap": 1.0,
+    "Jim Simons": 1.0,
 }
 
 
@@ -78,6 +80,7 @@ class AgentConsensus:
             GrahamAgent(),
             LynchAgent(),
             IanDunlapAgent(),
+            SimonsAgent(),
         ]
 
     async def analyze(self, ticker: str, *, macro=None) -> ConsensusResult:

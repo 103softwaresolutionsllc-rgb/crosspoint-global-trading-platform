@@ -335,11 +335,16 @@ def _dashboard_logout():
     return redirect(url_for("_dashboard_login"))
 
 
+@app.server.route("/health")
+def _health_check():
+    return "OK", 200
+
+
 @app.server.before_request
 def _protect_dashboard():
     if not _dashboard_auth_enabled():
         return None
-    if request.path in ("/login", "/logout"):
+    if request.path in ("/login", "/logout", "/health"):
         return None
     if session.get("dashboard_authenticated"):
         return None

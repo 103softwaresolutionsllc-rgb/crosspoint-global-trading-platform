@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QSplitter, QMenuBar, QToolBar, QStatusBar,
     QLabel, QPushButton, QLineEdit, QTextEdit, QTableWidget,
-    QTableWidgetItem, QProgressBar, QFrame, QScrollArea
+    QTableWidgetItem, QProgressBar, QFrame, QScrollArea, QGridLayout
 )
 from PyQt6.QtCore import QTimer, pyqtSignal, QThread, Qt
 from PyQt6.QtGui import QIcon, QAction, QFont, QPalette, QColor
@@ -24,6 +24,7 @@ from ..agents.value_investors.buffett import BuffettAgent
 from ..agents.value_investors.graham import GrahamAgent
 from ..agents.value_investors.lynch import LynchAgent
 from ..agents.value_investors.dunlap import IanDunlapAgent
+from ..agents.quant_agents.simons import SimonsAgent
 from ..connectors.yahoo_finance import YahooFinanceConnector
 from ..trading.websocket import WebSocketManager, RealTimeDataFeed
 
@@ -339,10 +340,14 @@ class FinceptMainWindow(QMainWindow):
         self.dunlap_btn = QPushButton("Dunlap")
         self.dunlap_btn.clicked.connect(lambda: self.run_agent_analysis("dunlap"))
         
+        self.simons_btn = QPushButton("Simons")
+        self.simons_btn.clicked.connect(lambda: self.run_agent_analysis("simons"))
+        
         agent_buttons_layout.addWidget(self.buffett_btn)
         agent_buttons_layout.addWidget(self.graham_btn)
         agent_buttons_layout.addWidget(self.lynch_btn)
         agent_buttons_layout.addWidget(self.dunlap_btn)
+        agent_buttons_layout.addWidget(self.simons_btn)
         
         agent_layout.addLayout(agent_buttons_layout)
         
@@ -598,6 +603,9 @@ Confidence: High
             elif agent_type == "dunlap":
                 from ..agents.value_investors.dunlap import IanDunlapAgent
                 agent = IanDunlapAgent()
+            elif agent_type == "simons":
+                from ..agents.quant_agents.simons import SimonsAgent
+                agent = SimonsAgent()
             else:
                 return
             
