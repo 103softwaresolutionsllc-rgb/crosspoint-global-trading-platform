@@ -123,6 +123,7 @@ class WorkflowExecutor:
             "agent/lynch": "fincept_terminal.agents.value_investors.lynch.LynchAgent",
             "agent/dunlap": "fincept_terminal.agents.value_investors.dunlap.IanDunlapAgent",
             "agent/simons": "fincept_terminal.agents.quant_agents.simons.SimonsAgent",
+            "agent/dalio": "fincept_terminal.agents.macro_agents.dalio.DalioAgent",
         }
         import importlib
 

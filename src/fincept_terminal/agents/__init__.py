@@ -9,6 +9,7 @@ from .value_investors.graham import GrahamAgent
 from .value_investors.lynch import LynchAgent
 from .value_investors.dunlap import IanDunlapAgent
 from .quant_agents.simons import SimonsAgent
+from .macro_agents.dalio import DalioAgent
 
 __all__ = [
     "BaseAgent",
@@ -18,4 +19,5 @@ __all__ = [
     "LynchAgent",
     "IanDunlapAgent",
     "SimonsAgent",
+    "DalioAgent",
 ]

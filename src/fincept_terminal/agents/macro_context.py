@@ -261,6 +261,21 @@ def _adjust_confidence(agent_key: str, confidence: float, macro: MacroSnapshot) 
             notes.append("Recession risk — quality bar raised")
             risks.append("Macro slowdown threatens compounder multiples")
 
+    elif agent_key == "dalio":
+        if macro.fed_funds_rate > 4.5:
+            c *= 0.90
+            notes.append("High Fed Funds rate — multiple compression drag applied")
+            risks.append("Tight monetary policy increases cost of capital")
+        if macro.yield_curve_10y2y < 0:
+            c *= 0.95
+            notes.append("Inverted yield curve — elevated credit contraction risk")
+            risks.append("Yield curve inversion suggests credit contraction risk")
+        if macro.regime == "inflationary":
+            notes.append("Inflationary regime — bias towards pricing power and commodity linkages")
+        elif macro.regime == "recession_risk":
+            c *= 0.88
+            notes.append("Recession risk — defensive posture with capital preservation focus")
+
     return max(0.0, min(1.0, c)), notes, risks, catalysts
 
 

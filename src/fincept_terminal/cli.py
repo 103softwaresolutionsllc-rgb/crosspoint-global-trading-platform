@@ -21,6 +21,7 @@ from fincept_terminal.agents.value_investors.graham import GrahamAgent
 from fincept_terminal.agents.value_investors.lynch import LynchAgent
 from fincept_terminal.agents.value_investors.dunlap import IanDunlapAgent
 from fincept_terminal.agents.quant_agents.simons import SimonsAgent
+from fincept_terminal.agents.macro_agents.dalio import DalioAgent
 from fincept_terminal.connectors.yahoo_finance import YahooFinanceConnector
 from fincept_terminal.connectors.fred import FREDConnector
 from fincept_terminal.connectors.kraken import KrakenConnector
@@ -134,6 +135,8 @@ async def run_agent_analysis(agent_name: str, ticker: str, config: CLIConfig) ->
             agent = IanDunlapAgent()
         elif agent_name.lower() == "simons":
             agent = SimonsAgent()
+        elif agent_name.lower() == "dalio":
+            agent = DalioAgent()
         else:
             console.print(f"[bold red]Unknown agent: {agent_name}[/bold red]")
             return
@@ -314,6 +317,7 @@ def create_parser() -> argparse.ArgumentParser:
     agent_parser.add_argument("--lynch", action="store_true", help="Use Lynch agent")
     agent_parser.add_argument("--dunlap", action="store_true", help="Use Dunlap agent")
     agent_parser.add_argument("--simons", action="store_true", help="Use Simons agent")
+    agent_parser.add_argument("--dalio", action="store_true", help="Use Dalio agent")
     agent_parser.add_argument("--ticker", "-t", required=True, help="Stock ticker symbol")
     
     # Data commands
@@ -383,8 +387,10 @@ async def main() -> None:
             await run_agent_analysis("dunlap", args.ticker, config)
         elif args.simons:
             await run_agent_analysis("simons", args.ticker, config)
+        elif args.dalio:
+            await run_agent_analysis("dalio", args.ticker, config)
         else:
-            console.print("[bold red]Please specify an agent (--buffett, --graham, --lynch, --dunlap, or --simons)[/bold red]")
+            console.print("[bold red]Please specify an agent (--buffett, --graham, --lynch, --dunlap, --simons, or --dalio)[/bold red]")
     elif args.command == "data":
         symbol = args.ticker or args.series or args.pair
         if not symbol:

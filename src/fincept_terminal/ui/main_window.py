@@ -25,6 +25,7 @@ from ..agents.value_investors.graham import GrahamAgent
 from ..agents.value_investors.lynch import LynchAgent
 from ..agents.value_investors.dunlap import IanDunlapAgent
 from ..agents.quant_agents.simons import SimonsAgent
+from ..agents.macro_agents.dalio import DalioAgent
 from ..connectors.yahoo_finance import YahooFinanceConnector
 from ..trading.websocket import WebSocketManager, RealTimeDataFeed
 
@@ -343,11 +344,15 @@ class FinceptMainWindow(QMainWindow):
         self.simons_btn = QPushButton("Simons")
         self.simons_btn.clicked.connect(lambda: self.run_agent_analysis("simons"))
         
+        self.dalio_btn = QPushButton("Dalio")
+        self.dalio_btn.clicked.connect(lambda: self.run_agent_analysis("dalio"))
+        
         agent_buttons_layout.addWidget(self.buffett_btn)
         agent_buttons_layout.addWidget(self.graham_btn)
         agent_buttons_layout.addWidget(self.lynch_btn)
         agent_buttons_layout.addWidget(self.dunlap_btn)
         agent_buttons_layout.addWidget(self.simons_btn)
+        agent_buttons_layout.addWidget(self.dalio_btn)
         
         agent_layout.addLayout(agent_buttons_layout)
         
@@ -606,6 +611,9 @@ Confidence: High
             elif agent_type == "simons":
                 from ..agents.quant_agents.simons import SimonsAgent
                 agent = SimonsAgent()
+            elif agent_type == "dalio":
+                from ..agents.macro_agents.dalio import DalioAgent
+                agent = DalioAgent()
             else:
                 return
             

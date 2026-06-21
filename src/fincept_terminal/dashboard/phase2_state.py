@@ -84,6 +84,7 @@ AGENT_META: dict[str, dict[str, str]] = {
     "Peter Lynch": {"short": "Lynch", "color": "#00d4ff", "strategy": "GARP · PEG ratio"},
     "Ian Dunlap": {"short": "Dunlap", "color": "#9b8cff", "strategy": "Turnaround · Cost cuts"},
     "Jim Simons": {"short": "Simons", "color": "#00ffcc", "strategy": "Quant · Stat arb"},
+    "Ray Dalio": {"short": "Dalio", "color": "#ff6b6b", "strategy": "Macro · Risk parity"},
 }
 
 
